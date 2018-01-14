@@ -34,7 +34,7 @@ class Target(Entity):
         super().__init__(np.random.randint(SCREEN_SIZE, size=2))
 
     def reset(self):
-        self._position = np.random.randint(SCREEN_SIZE, size=2)
+        self.position = np.random.randint(SCREEN_SIZE, size=2)
 
 class Policy(object):
     """ A function that defines an agent's behavior. 
