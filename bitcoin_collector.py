@@ -24,13 +24,11 @@ SCREEN_SIZE = 600
 TILE_SIZE = 50
 TARGET_RADIUS = 10
 POLICY_INPUT_DIM = 4
-POLICY_HIDDEN_DIM = 4
+POLICY_HIDDEN_DIM = 3
 POLICY_OUTPUT_DIM = 2
 AGENT_RADIUS = 15
-AGENT_MIN_SPEED = 2.0
-AGENT_MAX_SPEED = 4.0
-ROTATION_MIN = -0.1
-ROTATION_MAX = 0.1
+AGENT_MIN_SPEED = 1.0
+AGENT_MAX_SPEED = 2.0
 
 class Entity(object):
     """ Any entity that has coordinates for its position. 
@@ -49,19 +47,19 @@ class Entity(object):
         return dist < (self.radius + ent2.radius)
 
     def find_closest(self, others):
-        """ Return the unnormalized direction vector towards the closest entity.
+        """ Return the normalized direction vector towards the closest entity.
 
         Args:
             ent: an Entity at the starting point.
             others: a list of Entities from which the closest one must be found.
 
         Returns:
-            A numpy.ndarray for the unnormalized direction towards the closest Entity.
+            A numpy.ndarray for the normalized direction towards the closest Entity.
         """
         diffs = [ent.position - self.position for ent in others]
         dists = [math.sqrt(np.sum(diff ** 2)) for diff in diffs]
-        index = dists.index(min(dists))
-        return others[index].position, diffs[index]
+        i = dists.index(min(dists))
+        return others[i].position, (diffs[i] / dists[i] if dists[i] != 0.0 else diffs[i])
 
 class Target(Entity):
     """ Target that an agent must collect to increase fitness. 
@@ -127,6 +125,10 @@ class NeuralNetwork(Policy):
         super().__init__(input_dim, output_dim)
         if len(weights) != input_dim * hidden + hidden * output_dim:
             raise ValueError("invalid number of weights")
+
+        # TODO: Add more necessary attributes.
+
+        # **** BELOW IS A SAMPLE SOLUTION ****
         self.W_1 = np.array(weights[:input_dim * hidden]).reshape(input_dim, hidden)
         self.W_2 = np.array(weights[input_dim * hidden:]).reshape(hidden, output_dim)
 
@@ -155,10 +157,11 @@ class NeuralNetwork(Policy):
 
         # TODO: Implement this function.
 
-        # **** BELOW IS THE SAMPLE SOLUTION ****
+        # **** BELOW IS A SAMPLE SOLUTION ****
         z_1 = np.dot(inputs, self.W_1)
-        a_1 = np.maximum(z_1, 0.0, z_1)
-        return np.dot(a_1, self.W_2)
+        a_1 = 1.0 / (1.0 + np.exp(-z_1))
+        z_2 = np.dot(a_1, self.W_2)
+        return 1.0 / (1.0 + np.exp(-z_2))
 
 class Agent(Entity):
     def __init__(self, neural_net=None):
@@ -182,7 +185,8 @@ class Agent(Entity):
         """ Update the agent's states. """
         self.target_pos, self.target_dir = self.find_closest(targets)
         outputs = self.policy(np.hstack([self.direction, self.target_dir]))
-        self.rotation += np.clip(outputs[0] - outputs[1], ROTATION_MIN, ROTATION_MAX)
+        outputs = outputs * (AGENT_MAX_SPEED - AGENT_MIN_SPEED) + AGENT_MIN_SPEED
+        self.rotation += outputs[0] - outputs[1]
         self.position += (self.direction * np.sum(outputs)).astype(int)
         self.position = np.clip(self.position, 0, SCREEN_SIZE)
 
@@ -195,10 +199,8 @@ class Game(object):
             # Add Pygame related attributes if the game renders.
             pygame.init()
             pygame.display.set_caption("BTC Collector")
-
             self.clock = pygame.time.Clock()
             self.display = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
-
             # Add sprite images for targets, agent, and floor.
             self.target_sprite = pygame.image.load("asset/target.png").convert_alpha()
             self.agent_sprite = pygame.image.load("asset/agent.png").convert_alpha()
@@ -231,12 +233,12 @@ class Game(object):
                 # Render floor.
                 for r in range(int(SCREEN_SIZE / TILE_SIZE)):
                     for c in range(int(SCREEN_SIZE / TILE_SIZE)):
-                        if r % 2 or c % 2:
+                        if abs(r - c) % 2:
                             self.display.blit(self.floor_tile, (r * TILE_SIZE, c * TILE_SIZE))
                         else:
                             self.display.blit(pygame.transform.rotate(self.floor_tile, 90), 
                                               (r * TILE_SIZE, c * TILE_SIZE))
-                # Render targets.
+                # Render all targets.
                 for t in self.targets:
                     t_corner = t.position - np.array([TARGET_RADIUS, TARGET_RADIUS])
                     self.display.blit(self.target_sprite, t_corner)
@@ -255,7 +257,6 @@ class Game(object):
         return score
 
 if __name__ == "__main__":
-    np.random.seed(1)
-    g = Game(Agent(), 10, render=True)
-    score = g.rollout(10000)
-    print(score)
+    np.random.seed(0)
+    score = Game(Agent(), 10, render=True).rollout(10000)
+    print("Score =", score)
