@@ -27,8 +27,8 @@ POLICY_INPUT_DIM = 4
 POLICY_HIDDEN_DIM = 3
 POLICY_OUTPUT_DIM = 2
 AGENT_RADIUS = 15
-AGENT_MIN_SPEED = 1.0
-AGENT_MAX_SPEED = 2.0
+AGENT_MIN_SPEED = 2.0
+AGENT_MAX_SPEED = 3.0
 
 class Entity(object):
     """ Any entity that has coordinates for its position. 
@@ -102,7 +102,7 @@ class Policy(object):
         Returns:
             A random numpy.ndarray for the speed of each wheel (left, right). 
         """
-        return np.random.uniform(AGENT_MIN_SPEED, AGENT_MAX_SPEED, 2)
+        return np.random.uniform(0.0, 1.0, 2)
 
 class NeuralNetwork(Policy):
     """ Neural network for an agent's policy.
@@ -185,9 +185,9 @@ class Agent(Entity):
         """ Update the agent's states. """
         self.target_pos, self.target_dir = self.find_closest(targets)
         outputs = self.policy(np.hstack([self.direction, self.target_dir]))
-        outputs = outputs * (AGENT_MAX_SPEED - AGENT_MIN_SPEED) + AGENT_MIN_SPEED
-        self.rotation += outputs[0] - outputs[1]
-        self.position += (self.direction * np.sum(outputs)).astype(int)
+        self.speed = outputs * (AGENT_MAX_SPEED - AGENT_MIN_SPEED) + AGENT_MIN_SPEED
+        self.rotation += self.speed[0] - self.speed[1]
+        self.position += (self.direction * np.sum(self.speed)).astype(int)
         self.position = np.clip(self.position, 0, SCREEN_SIZE)
 
 class Game(object):
@@ -200,7 +200,9 @@ class Game(object):
             pygame.init()
             pygame.display.set_caption("BTC Collector")
             self.clock = pygame.time.Clock()
+            self.font = pygame.font.Font("asset/flipps.otf", 12)
             self.display = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
+
             # Add sprite images for targets, agent, and floor.
             self.target_sprite = pygame.image.load("asset/target.png").convert_alpha()
             self.agent_sprite = pygame.image.load("asset/agent.png").convert_alpha()
@@ -230,6 +232,7 @@ class Game(object):
                     if event.type == pygame.QUIT:
                         pygame.quit()
                         return -1
+
                 # Render floor.
                 for r in range(int(SCREEN_SIZE / TILE_SIZE)):
                     for c in range(int(SCREEN_SIZE / TILE_SIZE)):
@@ -238,22 +241,38 @@ class Game(object):
                         else:
                             self.display.blit(pygame.transform.rotate(self.floor_tile, 90), 
                                               (r * TILE_SIZE, c * TILE_SIZE))
+
                 # Render all targets.
                 for t in self.targets:
                     t_corner = t.position - np.array([TARGET_RADIUS, TARGET_RADIUS])
                     self.display.blit(self.target_sprite, t_corner)
+
                 # Draw a circle around the closest target.
                 pygame.draw.circle(self.display, (0, 255, 0), self.agent.target_pos, 12, 2)
+
                 # Draw a point for the agent's vision
                 dot_pos = (self.agent.position + self.agent.direction * 60).astype(int)
                 pygame.draw.circle(self.display, (255, 0, 0), dot_pos, 1)
+
                 # Render the agent.
                 a_angle = self.agent.rotation * -180 / math.pi
                 a_corner = self.agent.position - np.array([AGENT_RADIUS, AGENT_RADIUS])
                 self.display.blit(pygame.transform.rotate(self.agent_sprite, a_angle), a_corner)
+
+                # Show the agent's outputs.
+                l_str = self.font.render("L_TRACK = %.3f" % self.agent.speed[0], False, (0, 0, 0))
+                r_str = self.font.render("R_TRACK = %.3f" % self.agent.speed[1], False, (0, 0, 0))
+                self.display.blit(l_str, (2, 0))
+                self.display.blit(r_str, (2, 20))
+
+                # Show current score.
+                score_str = self.font.render("SCORE = %d" % score, False, (0, 0, 0))
+                self.display.blit(score_str, (2, SCREEN_SIZE - 24))
+
                 # Update display.
                 pygame.display.update()
                 self.clock.tick(FPS)
+                
         return score
 
 if __name__ == "__main__":

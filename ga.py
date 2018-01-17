@@ -10,7 +10,7 @@ from tqdm import trange
 
 N_ITER = 500
 N_TARGETS = 5
-N_GEN = 100
+N_GEN = 500
 POP_SIZE = 50
 
 creator.create("FitnessMax", base.Fitness, weights=(1.0,))
