@@ -128,10 +128,6 @@ class NeuralNetwork(Policy):
 
         # TODO: Add more necessary attributes.
 
-        # **** BELOW IS A SAMPLE SOLUTION ****
-        self.W_1 = np.array(weights[:input_dim * hidden]).reshape(input_dim, hidden)
-        self.W_2 = np.array(weights[input_dim * hidden:]).reshape(hidden, output_dim)
-
     def __call__(self, inputs):
         return self.get_wheel_speeds(inputs)
 
@@ -156,12 +152,6 @@ class NeuralNetwork(Policy):
             raise ValueError("invalid number of inputs")
 
         # TODO: Implement this function.
-
-        # **** BELOW IS A SAMPLE SOLUTION ****
-        z_1 = np.dot(inputs, self.W_1)
-        a_1 = 1.0 / (1.0 + np.exp(-z_1))
-        z_2 = np.dot(a_1, self.W_2)
-        return 1.0 / (1.0 + np.exp(-z_2))
 
 class Agent(Entity):
     def __init__(self, neural_net=None):
