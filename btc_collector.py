@@ -197,6 +197,7 @@ class Game(object):
             self.target_sprite = pygame.image.load("asset/target.png").convert_alpha()
             self.agent_sprite = pygame.image.load("asset/agent.png").convert_alpha()
             self.floor_tile = pygame.image.load("asset/tile.png")
+            pygame.display.set_icon(self.target_sprite)
 
     def rollout(self, n_iter):
         """ Let the agent play the game. 
