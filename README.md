@@ -1,2 +1,2 @@
 # fri-midterm
-Mine-Collector game for FRI midterm project
+BTC-Collector game for FRI midterm project
